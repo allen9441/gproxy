@@ -2075,6 +2075,44 @@ fn shapes_converted_responses_and_avoids_cli_tool_name_collisions() {
 }
 
 #[test]
+fn converted_reasoning_content_is_replayed_as_summary() {
+    let value = prepared_body(
+        json!({}),
+        Operation::StreamGenerateContent,
+        json!({
+            "model": "gpt-6-sol",
+            "input": [
+                {"role": "user", "content": "hi"},
+                {
+                    "type": "reasoning", "id": "reasoning-1", "status": "completed",
+                    "summary": [{"type": "summary_text", "text": "earlier summary"}],
+                    "content": [
+                        {"type": "reasoning_text", "text": "continued reasoning", "future_part": 1},
+                        {"type": "reasoning_text", "text": ""}
+                    ],
+                    "encrypted_content": "opaque",
+                    "future_item": true
+                },
+                {"role": "assistant", "content": "hello"}
+            ]
+        }),
+    );
+    let reasoning = &value["input"][1];
+    assert!(reasoning.get("content").is_none());
+    assert!(reasoning.get("status").is_none());
+    assert_eq!(
+        reasoning["summary"],
+        json!([
+            {"type": "summary_text", "text": "earlier summary"},
+            {"type": "summary_text", "text": "continued reasoning", "future_part": 1}
+        ])
+    );
+    assert_eq!(reasoning["encrypted_content"], "opaque");
+    assert_eq!(reasoning["future_item"], true);
+    assert_eq!(value["input"][2]["content"], "hello");
+}
+
+#[test]
 fn cli_shaped_requests_and_client_managed_sessions_are_identity_transforms() {
     let cli = json!({"model":"gpt-5.4","stream":true,"store":false,"instructions":"policy",
         "input":[{"role":"user","content":"hello"}],

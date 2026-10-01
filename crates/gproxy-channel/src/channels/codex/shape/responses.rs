@@ -56,6 +56,15 @@ pub(super) fn request(
             } else {
                 if let InputItem::Reasoning(reasoning) = &mut item {
                     reasoning.status = None;
+                    if let Some(content) = reasoning.content.take() {
+                        reasoning.summary.extend(content.into_iter().filter_map(|part| {
+                            (!part.text.is_empty()).then_some(SummaryText {
+                                type_: SummaryTextType::SummaryText,
+                                text: part.text,
+                                rest: part.rest,
+                            })
+                        }));
+                    }
                 }
                 retained.push(item);
             }
