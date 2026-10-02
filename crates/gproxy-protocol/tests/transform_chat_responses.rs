@@ -44,6 +44,35 @@ fn chat_to_responses_request(
 }
 
 #[test]
+fn empty_assistant_reasoning_does_not_create_a_responses_item() {
+    for field in ["reasoning_content", "reasoning"] {
+        let mut assistant = json!({"role":"assistant", "content":"previous answer"});
+        assistant[field] = json!("");
+        let input = serde_json::from_value(json!({
+            "model":"gpt-6.1-sol",
+            "messages":[
+                {"role":"system", "content":"rules"},
+                {"role":"user", "content":"hello"},
+                assistant,
+                {"role":"user", "content":"continue"}
+            ]
+        }))
+        .unwrap();
+        let converted = chat_to_responses_request(input, "gpt-6.1-sol").unwrap();
+        let wire = serde_json::to_value(converted.value).unwrap();
+        let items = wire["input"].as_array().unwrap();
+        assert!(
+            items.iter().all(|item| item["type"] != "reasoning"),
+            "{field}"
+        );
+        assert_eq!(items.len(), 4);
+        assert_eq!(items[2]["role"], "assistant");
+        assert_eq!(items[2]["content"][0]["text"], "previous answer");
+        assert_eq!(items[3]["content"], "continue");
+    }
+}
+
+#[test]
 fn chat_request_maps_roles_tools_and_keeps_call_id_distinct_from_item_id() {
     let input: chat::GenerateContentRequestBody = serde_json::from_value(json!({
         "model":"gpt-chat",

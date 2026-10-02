@@ -135,6 +135,7 @@ pub(super) fn to_responses(
                         &message.reasoning,
                         &message.reasoning_details,
                     )
+                    .filter(|text| !text.is_empty())
                 {
                     use crate::transform::identity::OutputItemKind;
                     let id = flow
